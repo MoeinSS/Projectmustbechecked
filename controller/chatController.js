@@ -1,70 +1,34 @@
-const User = require('../models/User');
 const Message = require('../models/Message');
 
-exports.chat = async (req, res) => {
+exports.getChatPage = async (req, res) => {
   try {
-    const users = await User.find().select('_id name');
-    const currentUser = req.session.user;
-    res.render('chat', { users, currentUser });
+
+    const messages = await Message.find().sort({ createdAt: 1 });
+
+
+    res.render('chat', { messages });
   } catch (error) {
-    console.error('Error loading chat:', error);
-    res.redirect('/login');
+    console.error('Error retrieving messages:', error);
+    res.status(500).send('Internal Server Error');
   }
 };
 
 exports.postMessage = async (req, res) => {
   try {
-    const { recipientId, message } = req.body;
-    const senderId = req.session.user._id;
+    const { sender, content } = req.body;
+
 
     const newMessage = new Message({
-      sender: senderId,
-      recipient: recipientId,
-      message,
+      sender,
+      content,
     });
+
+ 
     await newMessage.save();
 
     res.redirect('/chat');
   } catch (error) {
-    console.error('Error sending message:', error);
-    res.redirect('/chat');
-  }
-};
-
-exports.getMessages = async (req, res) => {
-  try {
-    const { recipientId } = req.params;
-    const senderId = req.session.user._id;
-
-    const messages = await Message.find({
-      $or: [
-        { sender: senderId, recipient: recipientId },
-        { sender: recipientId, recipient: senderId },
-      ],
-    });
-
-    res.render('messages', { messages });
-  } catch (error) {
-    console.error('Error fetching messages:', error);
-    res.redirect('/chat');
-  }
-};
-
-exports.pollMessages = async (req, res) => {
-  try {
-    const { recipientId } = req.params;
-    const senderId = req.session.user._id;
-
-    const messages = await Message.find({
-      $or: [
-        { sender: senderId, recipient: recipientId },
-        { sender: recipientId, recipient: senderId },
-      ],
-    });
-
-    res.json(messages);
-  } catch (error) {
-    console.error('Error polling messages:', error);
-    res.status(500).json({ error: 'An error occurred' });
+    console.error('Error posting message:', error);
+    res.status(500).send('Internal Server Error');
   }
 };
